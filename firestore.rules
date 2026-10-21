@@ -1,0 +1,196 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             data.salonName is string && data.salonName.size() > 0 && data.salonName.size() <= 100 &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 150)) &&
+             (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidBooking(data) {
+      return data.clientName is string && data.clientName.size() > 0 && data.clientName.size() <= 100 &&
+             data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() <= 100 &&
+             data.staffName is string && data.staffName.size() > 0 && data.staffName.size() <= 100 &&
+             data.date is string && data.date.size() >= 8 && data.date.size() <= 20 &&
+             data.timeSlot is string && data.timeSlot.size() > 0 && data.timeSlot.size() <= 30 &&
+             data.status is string && data.status in ['CONFIRMED', 'PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] &&
+             (!('clientPhone' in data) || data.clientPhone == null || (data.clientPhone is string && data.clientPhone.size() <= 30)) &&
+             (!('serviceId' in data) || data.serviceId == null || (data.serviceId is string && data.serviceId.size() <= 128)) &&
+             (!('staffId' in data) || data.staffId == null || (data.staffId is string && data.staffId.size() <= 128)) &&
+             (!('durationMin' in data) || data.durationMin == null || (data.durationMin is int && data.durationMin > 0 && data.durationMin <= 1440)) &&
+             (!('price' in data) || data.price == null || (data.price is number && data.price >= 0 && data.price <= 100000)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidStaff(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.role is string && data.role.size() > 0 && data.role.size() <= 100 &&
+             data.specialization is string && data.specialization.size() > 0 && data.specialization.size() <= 100 &&
+             (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 150)) &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+             (!('workingHours' in data) || data.workingHours == null || (data.workingHours is string && data.workingHours.size() <= 100)) &&
+             (!('activeDays' in data) || data.activeDays == null || (data.activeDays is string && data.activeDays.size() <= 100)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidService(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
+             data.durationMin is int && data.durationMin > 0 && data.durationMin <= 1440 &&
+             data.price is number && data.price >= 0 && data.price <= 100000 &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 1000)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidClient(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 30 &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 150)) &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000)) &&
+             (!('preferredStylistId' in data) || data.preferredStylistId == null || (data.preferredStylistId is string && data.preferredStylistId.size() <= 128)) &&
+             (!('totalVisits' in data) || data.totalVisits == null || (data.totalVisits is int && data.totalVisits >= 0 && data.totalVisits <= 100000)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'salonName', 'email', 'phone', 'updatedAt']);
+
+      allow delete: if isOwner(userId);
+
+      // Bookings Subcollection
+      match /bookings/{bookingId} {
+        allow get: if isOwner(userId) && isValidId(bookingId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(bookingId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidBooking(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(bookingId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidBooking(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'clientName', 'clientPhone', 'serviceId', 'serviceName',
+                           'staffId', 'staffName', 'date', 'timeSlot', 'durationMin',
+                           'price', 'status', 'notes', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(bookingId);
+      }
+
+      // Staff Subcollection
+      match /staff/{staffId} {
+        allow get: if isOwner(userId) && isValidId(staffId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(staffId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidStaff(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(staffId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidStaff(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'role', 'specialization', 'phone', 'email',
+                           'avatarUrl', 'workingHours', 'activeDays', 'notes', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(staffId);
+      }
+
+      // Services Subcollection
+      match /services/{serviceId} {
+        allow get: if isOwner(userId) && isValidId(serviceId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(serviceId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidService(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(serviceId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidService(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'category', 'durationMin', 'price', 'description', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(serviceId);
+      }
+
+      // Clients Subcollection
+      match /clients/{clientId} {
+        allow get: if isOwner(userId) && isValidId(clientId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(clientId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidClient(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(clientId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidClient(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'phone', 'email', 'notes', 'preferredStylistId', 'totalVisits', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(clientId);
+      }
+    }
+  }
+}

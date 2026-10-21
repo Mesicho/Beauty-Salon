@@ -1,0 +1,6 @@
+{
+  "name": "SalonSphere",
+  "description": "Beauty salon management system for bookings, appointments, staff scheduling, client records, and styling portfolio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

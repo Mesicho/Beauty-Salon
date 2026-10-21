@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and salon identity details",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "salonName": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" }
+      },
+      "required": ["displayName", "salonName", "createdAt"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Salon appointment booking record",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "timeSlot": { "type": "string", "description": "HH:MM format e.g. 10:00 AM" },
+        "durationMin": { "type": "integer" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["CONFIRMED", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" }
+      },
+      "required": ["clientName", "serviceName", "staffName", "date", "timeSlot", "status", "createdAt"]
+    },
+    "StaffMember": {
+      "title": "StaffMember",
+      "description": "Stylist and team member record with schedule",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "specialization": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "workingHours": { "type": "string" },
+        "activeDays": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" }
+      },
+      "required": ["name", "role", "specialization", "createdAt"]
+    },
+    "SalonService": {
+      "title": "SalonService",
+      "description": "Salon service offering item",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "durationMin": { "type": "integer" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" }
+      },
+      "required": ["name", "category", "durationMin", "price", "createdAt"]
+    },
+    "ClientRecord": {
+      "title": "ClientRecord",
+      "description": "Client contact and preference profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "notes": { "type": "string" },
+        "preferredStylistId": { "type": "string" },
+        "totalVisits": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Client must submit FieldValue.serverTimestamp()" }
+      },
+      "required": ["name", "phone", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Salon manager user profile document"
+    },
+    "/users/{userId}/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Bookings for the salon managed by this user"
+    },
+    "/users/{userId}/staff/{staffId}": {
+      "schema": { "$ref": "#/entities/StaffMember" },
+      "description": "Staff roster managed by this salon owner"
+    },
+    "/users/{userId}/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/SalonService" },
+      "description": "Services menu offered by this salon"
+    },
+    "/users/{userId}/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/ClientRecord" },
+      "description": "Client CRM directory for this salon"
+    }
+  }
+}
